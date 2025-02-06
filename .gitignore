@@ -2,3 +2,4 @@ olympus/
 images/
 .vscode/
 *.o
+.DS_Store
