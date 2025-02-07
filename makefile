@@ -1,6 +1,6 @@
 # Saideep Arikontham
 # Feb 2025
-# CS 5330 OpenCV tutorial
+# CS 5330 Project 2
 
 
 # Compiler
