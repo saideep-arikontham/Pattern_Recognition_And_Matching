@@ -192,30 +192,30 @@ int get_top_N_matches(const std::vector<char*>& filenames, const std::vector<flo
     // Sort the pairs based on SSD values (ascending order)
     std::sort(ssd_pairs.begin(), ssd_pairs.end());
 
-    // Step 3: Retrieve the top N matches
-    if(ascending){
-        for (int i = 1; i < N+1 && i < ssd_pairs.size(); i++) {
-            // std::cout << "Filename: " << ssd_pairs[i].second << ", SSD: " << ssd_pairs[i].first << "\n";
-            std::string display_name = "Top " + std::to_string(i) + " Match: " + ssd_pairs[i].second;
-
-            cv::Mat src;
-            read_image(ssd_pairs[i].second, src);
-            display_image(display_name, src);
-        }
+    // Reverse based on ascending flag
+    if(!ascending){
+        std::reverse(ssd_pairs.begin(), ssd_pairs.end());
     }
-    else{
-        for (int i = ssd_pairs.size()-2; i > ssd_pairs.size()-N-2 && i > 0; i--) {
-            // std::cout << "Filename: " << ssd_pairs[i].second << ", SSD: " << ssd_pairs[i].first << "\n";
-            std::string display_name = "Top " + std::to_string(ssd_pairs.size()-i-1) + " Match: " + ssd_pairs[i].second;
 
-            cv::Mat src;
-            read_image(ssd_pairs[i].second, src);
-            display_image(display_name, src);
-        }
+    // Since the top match (index 0) is the query image, we cannot display it.
+    if (ssd_pairs.size() <= 1) {
+        return 0; // Nothing to display.
+    }
+    // Make sure we do not go out of bounds: we can display at most (ssd_pairs.size() - 1) matches.
+    int matches = std::min(N, static_cast<int>(ssd_pairs.size() - 1));
+
+    // Step 3: Retrieve the top N matches (excluding the first one)
+    for (int i = 1; i <= matches; i++) {
+        std::string display_name = "Top " + std::to_string(i) + " Match: " + ssd_pairs[i].second;
+        cv::Mat src;
+        read_image(ssd_pairs[i].second, src);
+        display_image(display_name, src);
     }
 
     return 0;
 }
+
+
 
 
 // -------------------------------------------------------------------------------------------
@@ -391,24 +391,63 @@ int get_depth_rgb_histogram(cv::Mat &src, cv::MatND &hist, const int histsize) {
 
 
 int get_embedding( cv::Mat &src, cv::Mat &embedding, cv::dnn::Net &net) {
-  const int ORNet_size = 224;
-  cv::Mat blob;
+    const int ORNet_size = 224;
+    cv::Mat blob;
 
-  // have the function do the ImageNet mean and SD normalization
-  // the function also scales the image to 224 x 224
-  cv::dnn::blobFromImage( src, // input image
-			  blob, // output array
-			  (1.0/255.0) * (1/0.226), // scale factor
-			  cv::Size( ORNet_size, ORNet_size ), // resize the image to this
-			  cv::Scalar( 124, 116, 104),  // subtract mean prior to scaling
-			  true,   // swapRB
-			  false,  // center crop after scaling short side to size
-			  CV_32F ); // output depth/type
+    // have the function do the ImageNet mean and SD normalization
+    // the function also scales the image to 224 x 224
+    cv::dnn::blobFromImage( src, // input image
+                blob, // output array
+                (1.0/255.0) * (1/0.226), // scale factor
+                cv::Size( ORNet_size, ORNet_size ), // resize the image to this
+                cv::Scalar( 124, 116, 104),  // subtract mean prior to scaling
+                true,   // swapRB
+                false,  // center crop after scaling short side to size
+                CV_32F ); // output depth/type
 
-  net.setInput( blob );
-  embedding = net.forward( "onnx_node!resnetv22_flatten0_reshape0" ); // the name of the embedding layer to grab
+    net.setInput( blob );
+    embedding = net.forward( "onnx_node!resnetv22_flatten0_reshape0" ); // the name of the embedding layer to grab
 
-  return(0);
+    return(0);
+}
+
+
+int get_depth_embedding( cv::Mat &src, cv::Mat &embedding, cv::dnn::Net &net) {
+    const int ORNet_size = 224;
+    cv::Mat blob;
+
+    cv::Mat depth;
+    get_depth(src, depth);
+
+    // Normalize depth to 0-255
+    cv::normalize(depth, depth, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+    cv::threshold(depth, depth, 150, 255, cv::THRESH_BINARY);
+
+    for (int i=0; i<src.rows; i++){
+        for (int j=0; j<src.rows; j++){
+            if(depth.at<float>(i,j)==0){
+                src.at<cv::Vec3b>(i,j)[0] = 0;
+                src.at<cv::Vec3b>(i,j)[1] = 0;
+                src.at<cv::Vec3b>(i,j)[2] = 0;
+            }
+        }
+    }
+
+    // have the function do the ImageNet mean and SD normalization
+    // the function also scales the image to 224 x 224
+    cv::dnn::blobFromImage( src, // input image
+                blob, // output array
+                (1.0/255.0) * (1/0.226), // scale factor
+                cv::Size( ORNet_size, ORNet_size ), // resize the image to this
+                cv::Scalar( 124, 116, 104),  // subtract mean prior to scaling
+                true,   // swapRB
+                false,  // center crop after scaling short side to size
+                CV_32F ); // output depth/type
+
+    net.setInput( blob );
+    embedding = net.forward( "onnx_node!resnetv22_flatten0_reshape0" ); // the name of the embedding layer to grab
+
+    return(0);
 }
 
 
@@ -543,6 +582,7 @@ int get_feature_vector_depth_rgb_hist(char img_file[256], std::vector<float> &im
 }
 
 
+// EXTENSIONS
 int get_feature_vector_dnn(char img_file[256], std::vector<float> &img_data) {
     cv::Mat src;
     read_image(img_file, src);
@@ -558,6 +598,83 @@ int get_feature_vector_dnn(char img_file[256], std::vector<float> &img_data) {
     for (int i = 0; i < embedding.rows; i++) {
         for (int j = 0; j < embedding.cols; j++) {
                 img_data.push_back(embedding.at<float>(i,j)); // Push top-half histogram values
+        }
+    }
+
+    return 0;
+}
+
+
+int get_feature_vector_depth_dnn(char img_file[256], std::vector<float> &img_data) {
+    cv::Mat src;
+    read_image(img_file, src);
+
+    char mod_filename[256];
+    strncpy(mod_filename, "./src/resnet18-v2-7.onnx", 255);
+    cv::dnn::Net net = cv::dnn::readNet( mod_filename );
+    
+    cv::Mat embedding;
+    get_depth_embedding( src, embedding, net);
+
+    // Flatten 3D histograms into the feature vector (equally weighted)
+    for (int i = 0; i < embedding.rows; i++) {
+        for (int j = 0; j < embedding.cols; j++) {
+                img_data.push_back(embedding.at<float>(i,j)); // Push top-half histogram values
+        }
+    }
+
+    return 0;
+}
+
+
+int get_feature_vector_four_rgb_hist(char img_file[256], std::vector<float> &img_data) {
+    cv::Mat src;
+    read_image(img_file, src);
+
+    cv::MatND hist1, hist2, hist3, hist4;
+    int histsize = 8;
+
+
+    cv::Mat part1 = src(cv::Rect(0, 0, 480, 384));
+    cv::Mat part2 = src(cv::Rect(160, 0, 480, 384));
+    cv::Mat part3 = src(cv::Rect(0, 128, 480, 384));
+    cv::Mat part4 = src(cv::Rect(160, 128, 480, 384));
+
+    // Compute 3D histogram
+    get_rgb_histogram(part1, hist1, histsize); 
+    get_rgb_histogram(part2, hist2, histsize);
+    get_rgb_histogram(part3, hist3, histsize); 
+    get_rgb_histogram(part4, hist4, histsize);  
+
+    // Flatten 3D histograms into the feature vector (equally weighted)
+    for (int r = 0; r < histsize; r++) {
+        for (int g = 0; g < histsize; g++) {
+            for (int b = 0; b < histsize; b++) {
+                img_data.push_back(hist1.at<float>(r, g, b)); // Push top-left histogram values
+            }
+        }
+    }
+
+    for (int r = 0; r < histsize; r++) {
+        for (int g = 0; g < histsize; g++) {
+            for (int b = 0; b < histsize; b++) {
+                img_data.push_back(hist2.at<float>(r, g, b)); // Push top-right histogram values
+            }
+        }
+    }
+    for (int r = 0; r < histsize; r++) {
+        for (int g = 0; g < histsize; g++) {
+            for (int b = 0; b < histsize; b++) {
+                img_data.push_back(hist3.at<float>(r, g, b)); // Push bottom-left histogram values
+            }
+        }
+    }
+
+    for (int r = 0; r < histsize; r++) {
+        for (int g = 0; g < histsize; g++) {
+            for (int b = 0; b < histsize; b++) {
+                img_data.push_back(hist4.at<float>(r, g, b)); // Push bottom-right histogram values
+            }
         }
     }
 
@@ -625,7 +742,8 @@ int write_feature_vectors(char dirname[256], char feature_file[256], FeatureVect
 // Image histogram evaluation metrics
 // -------------------------------------------------------------------------------------------
 
-float sum_of_squared_difference(std::vector<float> &img_data1, std::vector<float> &img_data2){
+float sum_of_squared_difference(std::vector<float> &img_data1, std::vector<float> &img_data2){ 
+    //lower is better
     float ssd = 0.0f;
 
     if(img_data1.size() != img_data2.size()){
@@ -641,6 +759,7 @@ float sum_of_squared_difference(std::vector<float> &img_data1, std::vector<float
 
 
 float histogram_intersection(std::vector<float> &img_data1, std::vector<float> &img_data2){
+    //higher is better
     float intersection = 0.0f;
 
     if(img_data1.size() != img_data2.size()){
@@ -656,6 +775,7 @@ float histogram_intersection(std::vector<float> &img_data1, std::vector<float> &
 
 
 double chiSquareDistance(std::vector<float> &img_data1, std::vector<float> &img_data2){
+    //lower is better
     double eps = 1e-10;
     if(img_data1.size() != img_data2.size()){
         printf("error: feature vectors are not the same size\n");
@@ -674,6 +794,7 @@ double chiSquareDistance(std::vector<float> &img_data1, std::vector<float> &img_
 
 
 double cosine_similarity(std::vector<float>& A, std::vector<float>& B) {
+    //higher is better
     double dot = 0.0;
     double normA = 0.0, normB = 0.0;
     
@@ -688,10 +809,11 @@ double cosine_similarity(std::vector<float>& A, std::vector<float>& B) {
 
 
 double computeCosineDistance(std::vector<float>& img_data1, std::vector<float>& img_data2) {
+    //lower is better
     /* Cosine distance is defined as 1.0 - cos_theta. */
     if (img_data1.size() != img_data2.size()) {
-        std::cerr << "Error: Vectors are not the same size!" << std::endl;
-        return -1.0;
+        printf("error: feature vectors are not the same size\n");
+        return -1;
     }
 
      cv::normalize(img_data1, img_data1, 1.0, 0.0, cv::NORM_L2);
@@ -703,6 +825,26 @@ double computeCosineDistance(std::vector<float>& img_data1, std::vector<float>& 
     // Cosine distance is defined as 1 - cosine similarity.
     return 1.0 - cos_sim;
 }
+
+
+float earth_movers_distance(std::vector<float>& img_data1, std::vector<float>& img_data2) {    // EXTENSIONS
+    //lower is better
+    if (img_data1.size() != img_data2.size()) {
+        printf("error: feature vectors are not the same size\n");
+        return -1;
+    }
+
+    float emd = 0.0;
+    float cumulative_flow = 0.0;  // Accumulate mass flow from one bin to the next
+
+    for (size_t i = 0; i < img_data1.size(); i++) {
+        cumulative_flow += img_data1[i] - img_data2[i];  // Compute flow
+        emd += abs(cumulative_flow);  // Accumulate absolute work required
+    }
+
+    return emd;
+}
+
 
 // -------------------------------------------------------------------------------------------
 // End

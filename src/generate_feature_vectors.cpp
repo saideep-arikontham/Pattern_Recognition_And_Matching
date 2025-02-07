@@ -27,8 +27,10 @@ int main(int argc, char *argv[]) {
     char feature_set[256];
     strncpy(feature_set, argv[2], 255); // feature set name
 
-    //Comparing Feature sets
-    if (strcmp(feature_set, "7x7_middle_square") == 0){ // Using 7x7 Middle square for computing histogram feature vectors
+    //WRITING FEATURE VECTORS
+
+    if (strcmp(feature_set, "7x7_middle_square") == 0){
+        // Using 7x7 Middle square for computing histogram feature vectors
         printf("Using 7x7 feature set\n");
 
         char feature_file[256];
@@ -36,7 +38,8 @@ int main(int argc, char *argv[]) {
         write_feature_vectors(dir_name, feature_file, get_feature_vector_7x7);
     }
 
-    else if (strcmp(feature_set, "rg_histogram") == 0){ // Using rg chromacity histogram to get feature vectors
+    else if (strcmp(feature_set, "rg_histogram") == 0){ 
+        // Using rg chromacity histogram to get feature vectors
         printf("Using RG histogram set\n");
 
         char feature_file[256];
@@ -44,7 +47,8 @@ int main(int argc, char *argv[]) {
         write_feature_vectors(dir_name, feature_file, get_feature_vector_rg_hist);
     }
 
-    else if (strcmp(feature_set, "two_rgb_histogram") == 0){ // Using two rgb histograms , one full and the other is a middle block of the image for feature vectors
+    else if (strcmp(feature_set, "two_rgb_histogram") == 0){ 
+        // Using two rgb histograms , one full and the other is a middle block of the image for feature vectors
         printf("Using two RGB histogram set\n");
 
         char feature_file[256];
@@ -52,7 +56,8 @@ int main(int argc, char *argv[]) {
         write_feature_vectors(dir_name, feature_file, get_feature_vector_two_rgb_hist);
     }
 
-    else if (strcmp(feature_set, "rgb_texture_hist") == 0){ // Using one rgb histogram and one magnitude texture histogram for feature vectors
+    else if (strcmp(feature_set, "rgb_texture_hist") == 0){ 
+        // Using one rgb histogram and one magnitude texture histogram for feature vectors
         printf("Using RGB histogram and Texture Histogram set\n");
 
         char feature_file[256];
@@ -60,7 +65,8 @@ int main(int argc, char *argv[]) {
         write_feature_vectors(dir_name, feature_file, get_feature_vector_rgb_texture_hist);
     }
 
-    else if (strcmp(feature_set, "depth_rgb") == 0){ // Using one rgb histogram with depth thresholding
+    else if (strcmp(feature_set, "depth_rgb") == 0){ 
+        // Using one rgb histogram with depth thresholding
         printf("Using depth RGB histogram \n");
 
         char feature_file[256];
@@ -68,12 +74,32 @@ int main(int argc, char *argv[]) {
         write_feature_vectors(dir_name, feature_file, get_feature_vector_depth_rgb_hist);
     }
 
-    else if (strcmp(feature_set, "dnn") == 0){ // Using deep neural network vectors
+    // EXTENSIONS
+    else if (strcmp(feature_set, "dnn") == 0){ 
+        // Using deep neural network vectors
         printf("Using deep neural network vectors\n");
 
         char feature_file[256];
         strncpy(feature_file, "./feature_vectors/feature_vectors_dnn.csv", 255);
         write_feature_vectors(dir_name, feature_file, get_feature_vector_dnn);
+    }
+
+    else if (strcmp(feature_set, "depth_dnn") == 0){ 
+        // Using deep neural network vectors
+        printf("Using depth thresholding with deep neural network vectors\n");
+
+        char feature_file[256];
+        strncpy(feature_file, "./feature_vectors/feature_vectors_depth_dnn.csv", 255);
+        write_feature_vectors(dir_name, feature_file, get_feature_vector_depth_dnn);
+    }
+    
+    else if (strcmp(feature_set, "four_rgb_histogram") == 0){ 
+        // Using four rgb histograms , top left and right, bottom left and right with slight intersection between them
+        printf("Using four RGB histogram set\n");
+
+        char feature_file[256];
+        strncpy(feature_file, "./feature_vectors/feature_vectors_four_rgb_hist.csv", 255);
+        write_feature_vectors(dir_name, feature_file, get_feature_vector_four_rgb_hist);
     }
 
     else{

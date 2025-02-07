@@ -9,15 +9,15 @@ CXX = $(CC)
 
 # Compiler flags
 CFLAGS = -std=c++17 -Wall -g \
-         -I/opt/homebrew/Cellar/opencv/4.10.0_18/include/opencv4 \
-         -I/opt/homebrew/Cellar/opencv/4.10.0_18/include \
+         -I/opt/homebrew/Cellar/opencv/4.11.0/include/opencv4 \
+         -I/opt/homebrew/Cellar/opencv/4.11.0/include \
          -I/opt/homebrew/Cellar/onnxruntime-osx-arm64-1.20.1/include/core \
          -I/opt/homebrew/Cellar/onnxruntime-osx-arm64-1.20.1/include
 
 CXXFLAGS = $(CFLAGS)
 
 # Library paths
-LDFLAGS = -L/opt/homebrew/Cellar/opencv/4.10.0_18/lib \
+LDFLAGS = -L/opt/homebrew/Cellar/opencv/4.11.0/lib \
           -L/opt/homebrew/Cellar/onnxruntime-osx-arm64-1.20.1/lib \
           -Wl,-rpath,/opt/homebrew/Cellar/onnxruntime-osx-arm64-1.20.1/lib
 
