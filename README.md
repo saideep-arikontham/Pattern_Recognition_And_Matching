@@ -34,10 +34,13 @@ This project demonstrates various content based image retrieval techniques along
 ```
 ├── bin/
 │   ├── #Executable binaries
+├── feature_vectors
+│   ├── # To store feature vectors
 ├── images/                                 # Self collected database
 │   ├── collected image database
 ├── include/                                # Includes for external libraries (if any)
-├── output/                                 # Output folder for filter effected images
+│   olympus/
+│   ├── # Original database
 ├── src/                                    # Source files
 │   ├── DA2Network.hpp
 │   ├── csv_util.cpp
